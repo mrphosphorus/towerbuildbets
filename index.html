@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tower Build Bets 🐎</title>
+  <style>
+    :root{
+      --bg:#0b1020; --card:#121835; --muted:#9fb1ff; --ink:#e9eeff; --accent:#7aa2ff; --accent2:#a8ffcf; --danger:#ff7a7a;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:linear-gradient(180deg,#0b1020,#10142a 40%,#0b1020);color:var(--ink)}
+    header{position:sticky;top:0;z-index:5;background:rgba(11,16,32,.8);backdrop-filter:blur(6px);border-bottom:1px solid #1f2752}
+    .wrap{max-width:1080px;margin:0 auto;padding:20px}
+    h1{margin:0;font-size:clamp(22px,3.5vw,34px)}
+    .sub{color:var(--muted);font-size:14px}
+    .grid{display:grid;gap:16px}
+    @media(min-width:900px){.grid.cols-3{grid-template-columns:1.2fr 1fr 1fr}}
+    @media(min-width:900px){.grid.cols-2{grid-template-columns:1fr 1fr}}
+    .card{background:var(--card);border:1px solid #1f2752;border-radius:16px;padding:16px;box-shadow:0 6px 24px rgba(0,0,0,.25)}
+    .card h2{margin:.2rem 0 .6rem;font-size:18px}
+    label{font-size:12px;color:var(--muted);display:block;margin:.5rem 0 .25rem}
+    input,select,textarea{width:100%;padding:10px 12px;border-radius:12px;border:1px solid #2a3470;background:#0c1335;color:var(--ink)}
+    textarea{min-height:70px}
+    button{cursor:pointer;border:0;border-radius:12px;padding:10px 14px;font-weight:600}
+    .btn{background:var(--accent);color:#071221}
+    .btn-outline{background:transparent;border:1px solid var(--accent);color:var(--ink)}
+    .btn-ghost{background:transparent;color:var(--muted)}
+    .btn-danger{background:var(--danger);color:#200}
+    .kudos{color:var(--accent2)}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .row > *{flex:1}
+    .pill{display:inline-flex;gap:8px;align-items:center;padding:6px 10px;border-radius:99px;background:#0e1536;border:1px solid #29316e;color:var(--ink);font-size:12px}
+    .small{font-size:12px;color:var(--muted)}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:8px;border-bottom:1px solid #26306a;text-align:left}
+    th{color:var(--muted);font-weight:600}
+    .money{font-variant-numeric:tabular-nums}
+    .right{text-align:right}
+    .center{text-align:center}
+    .muted{color:var(--muted)}
+    .tag{background:#1b234f;border:1px solid #2b3472;padding:4px 8px;border-radius:8px;font-size:12px}
+    .footer{color:#8a98ff54;text-align:center;padding:24px 0}
+    .link{color:var(--accent)}
+    .badge{font-size:11px;padding:3px 8px;border-radius:999px;background:#101949;border:1px solid #31409b;color:#cfe0ff}
+    .category-chip{display:inline-grid;grid-template-columns:auto 1fr;gap:8px;align-items:center;padding:8px 10px;border-radius:12px;background:#0c143b;border:1px solid #28316a}
+    .category-chip .name{font-weight:600}
+    .list{max-height:260px;overflow:auto}
+    .hidden{display:none}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <div class="row" style="align-items:center">
+        <div>
+          <h1>🏗️ Tower Build Bets <span class="small">(currency: 🐎)</span></h1>
+          <div class="sub">Bet friendly 🐎 on which student towers will triumph in our 3"×3"×8" balsa challenge: hold 5 kg and survive a 400 rpm shaker.</div>
+        </div>
+        <div style="margin-left:auto;display:flex;gap:10px;align-items:center">
+          <span class="pill money" id="wallet">🐎 0</span>
+          <button class="btn-outline" id="addHorses">Add 🐎</button>
+          <button class="btn-ghost" id="exportBtn" title="Export data JSON">Export</button>
+          <button class="btn-ghost" id="importBtn" title="Import data JSON">Import</button>
+          <button class="btn-ghost" id="resetBtn" title="Reset everything">Reset</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap grid cols-3">
+    <!-- Left: Place Bets -->
+    <section class="card">
+      <h2>🎯 Place a Bet</h2>
+      <div class="row">
+        <div>
+          <label>Category</label>
+          <select id="betCategory"></select>
+        </div>
+        <div>
+          <label>Team</label>
+          <select id="betTeam"></select>
+        </div>
+        <div>
+          <label>Amount (🐎)</label>
+          <input id="betAmount" type="number" min="1" step="1" placeholder="e.g. 25" />
+        </div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button class="btn" id="placeBetBtn">Place Bet</button>
+        <button class="btn-outline" id="multiBetBtn" title="Quick multi-bet across all categories on this team">Bet All Categories (🐎5 each)</button>
+      </div>
+      <p class="small muted" style="margin-top:8px">Pari‑mutuel style: payouts are proportional to each team's share of the pool, no house cut. Odds update live.</p>
+    </section>
+
+    <!-- Middle: Pools & Odds -->
+    <section class="card">
+      <h2>📈 Live Pools & Odds</h2>
+      <div id="pools"></div>
+    </section>
+
+    <!-- Right: Bet Slips -->
+    <section class="card">
+      <h2>🎟️ Your Bet Slips</h2>
+      <div class="list" id="slips"></div>
+    </section>
+
+    <!-- Teams -->
+    <section class="card">
+      <h2>👥 Teams</h2>
+      <div class="row">
+        <div>
+          <label>Team name</label>
+          <input id="teamName" placeholder="e.g., The Triangulators" />
+        </div>
+        <div>
+          <label>Builders</label>
+          <input id="teamBuilders" placeholder="e.g., Abby & Mason" />
+        </div>
+        <div>
+          <label>Mass (g)</label>
+          <input id="teamMass" type="number" min="1" placeholder="e.g., 42" />
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Image URL (optional)</label>
+          <input id="teamImg" placeholder="https://…" />
+        </div>
+        <div style="align-self:end">
+          <button class="btn" id="addTeamBtn">Add Team</button>
+        </div>
+      </div>
+      <div id="teamTableWrap" style="margin-top:10px"></div>
+    </section>
+
+    <!-- Categories -->
+    <section class="card">
+      <h2>🏷️ Categories</h2>
+      <div class="row">
+        <div>
+          <label>Name</label>
+          <input id="catName" placeholder="e.g., Most Efficient" />
+        </div>
+        <div>
+          <label>Scoring Note</label>
+          <input id="catNote" placeholder="e.g., Highest load/mass ratio" />
+        </div>
+        <div style="align-self:end">
+          <button class="btn" id="addCatBtn">Add Category</button>
+        </div>
+      </div>
+      <p class="small muted">Starter set included. Add your own like <span class="badge">Best Use of Triangles</span>, <span class="badge">Lightest to Hold 5 kg</span>, <span class="badge">Most Dramatic Failure</span>, <span class="badge">Best Aesthetics</span>.</p>
+      <div id="catList" style="margin-top:6px"></div>
+    </section>
+
+    <!-- Results / Admin -->
+    <section class="card">
+      <h2>🧪 Teacher Admin</h2>
+      <div class="row">
+        <div>
+          <label>Secret PIN (default: <b>mclean</b>)</label>
+          <input id="pin" type="password" placeholder="enter to unlock admin" />
+        </div>
+        <div style="align-self:end">
+          <button class="btn-outline" id="unlockBtn">Unlock</button>
+        </div>
+      </div>
+      <div id="adminPanel" class="hidden">
+        <div class="row">
+          <div>
+            <label>Lock/Unlock Betting</label>
+            <select id="lockCategory"></select>
+          </div>
+          <div style="align-self:end"><button class="btn" id="toggleLockBtn">Toggle Lock</button></div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Set Winner (category)</label>
+            <select id="winCategory"></select>
+          </div>
+          <div>
+            <label>Winning Team</label>
+            <select id="winTeam"></select>
+          </div>
+          <div style="align-self:end"><button class="btn" id="settleBtn">Settle & Payout</button></div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Grant Wallet (🐎)</label>
+            <input id="grantAmt" type="number" min="1" placeholder="e.g., 50" />
+          </div>
+          <div style="align-self:end"><button class="btn" id="grantBtn">Grant to Me</button></div>
+        </div>
+      </div>
+      <p class="small muted">No data leaves this page. Everything is stored in this browser via localStorage. Use Export/Import to move between devices.</p>
+    </section>
+
+    <!-- Leaderboards -->
+    <section class="card">
+      <h2>🏆 Leaderboards</h2>
+      <div id="leaderboards"></div>
+    </section>
+  </main>
+
+  <div class="footer">Made for classroom fun — remember: real stakes are just 🐎! • <span class="muted">v1.0</span></div>
+
+  <script>
+  // ---------- Utilities ----------
+  const $ = sel => document.querySelector(sel);
+  const el = (tag, attrs={}, children=[])=>{
+    const n = document.createElement(tag);
+    for(const [k,v] of Object.entries(attrs)){
+      if(k==="class") n.className=v; else if(k==="html") n.innerHTML=v; else n.setAttribute(k,v);
+    }
+    children.forEach(c=> n.appendChild(typeof c==="string"? document.createTextNode(c): c));
+    return n;
+  };
+  const fmt = (n)=> `🐎 ${Number(n||0).toLocaleString()}`;
+  const uid = ()=> Math.random().toString(36).slice(2,9);
+
+  // ---------- State ----------
+  const store = {
+    load(){
+      const s = JSON.parse(localStorage.getItem('tbb_state')||'null');
+      if(s) Object.assign(this, s);
+      if(!this.initialized){
+        this.wallet = 100; // starter 🐎
+        this.teams = [];
+        this.categories = [
+          {id:uid(), name:"Most Efficient", note:"Highest load/mass ratio", locked:false, winner:null},
+          {id:uid(), name:"Most Durable", note:"Longest survival time on mixer", locked:false, winner:null},
+          {id:uid(), name:"Least Durable", note:"Shortest survival time (fun!)", locked:false, winner:null},
+          {id:uid(), name:"Lightest to Hold 5 kg", note:"Smallest mass while holding load", locked:false, winner:null},
+          {id:uid(), name:"Best Use of Triangles", note:"Elegant trussing wins", locked:false, winner:null},
+          {id:uid(), name:"Most Dramatic Failure", note:"Spectacular (safe) collapse", locked:false, winner:null},
+          {id:uid(), name:"Best Aesthetics", note:"Crowd favorite design", locked:false, winner:null}
+        ];
+        this.bets = []; // {id, categoryId, teamId, amount, status: 'open'|'won'|'lost', payout}
+        this.pools = {}; // pools[categoryId][teamId] = amount
+        this.pin = 'mclean';
+        this.initialized = true;
+      }
+      this.categories.forEach(c=>{ if(!this.pools[c.id]) this.pools[c.id] = {}; });
+      this.save();
+    },
+    save(){ localStorage.setItem('tbb_state', JSON.stringify({
+      initialized:this.initialized, wallet:this.wallet, teams:this.teams, categories:this.categories, bets:this.bets, pools:this.pools, pin:this.pin
+    })); },
+    reset(){ localStorage.removeItem('tbb_state'); location.reload(); }
+  };
+  store.load();
+
+  // ---------- Rendering ----------
+  function refreshWallet(){ $('#wallet').textContent = fmt(store.wallet); }
+
+  function renderSelects(){
+    const catOptions = store.categories.map(c=> `<option value="${c.id}">${c.name}${c.locked? ' (locked)':''}</option>`).join('');
+    $('#betCategory').innerHTML = catOptions;
+    $('#lockCategory').innerHTML = catOptions;
+    $('#winCategory').innerHTML = catOptions;
+
+    const teamOptions = store.teams.map(t=> `<option value="${t.id}">${t.name}</option>`).join('');
+    $('#betTeam').innerHTML = teamOptions;
+    $('#winTeam').innerHTML = teamOptions;
+  }
+
+  function renderTeams(){
+    const wrap = $('#teamTableWrap');
+    if(store.teams.length===0){ wrap.innerHTML = '<p class="small muted">No teams yet. Add some above.</p>'; return; }
+    const rows = store.teams.map(t=> `<tr><td>${t.name}<div class="small muted">${t.builders||''}</div></td><td>${t.mass? t.mass+' g':''}</td><td>${t.img? '<a class="link" target="_blank" href="'+t.img+'">image</a>':''}</td><td class="right"><button class="btn-ghost" data-delteam="${t.id}">remove</button></td></tr>`).join('');
+    wrap.innerHTML = `<table><thead><tr><th>Team</th><th>Mass</th><th>Img</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+    wrap.querySelectorAll('[data-delteam]').forEach(b=> b.onclick = ()=>{ removeTeam(b.getAttribute('data-delteam')); });
+  }
+
+  function renderCategories(){
+    const list = $('#catList');
+    list.innerHTML = '';
+    store.categories.forEach(c=>{
+      const totalPool = totalForCat(c.id);
+      const chip = el('div', {class:'category-chip', style:'margin:8px 0'}, [
+        el('div', {class:'name'}, [document.createTextNode(c.name+' '), el('span',{class:'badge'}, [document.createTextNode(c.locked? 'Locked':'Open')])]),
+        el('div', {class:'small muted'}, [document.createTextNode(c.note||'')]),
+        el('div', {style:'grid-column:1 / -1'}, [el('span',{class:'small'},[document.createTextNode('Pool: ')]), el('b',{class:'money'},[document.createTextNode(fmt(totalPool))])])
+      ]);
+      list.appendChild(chip);
+    });
+  }
+
+  function renderPools(){
+    const div = $('#pools');
+    div.innerHTML = '';
+    store.categories.forEach(c=>{
+      const catDiv = el('div',{class:'card', style:'background:#0b1233;border-color:#26306a;margin-bottom:12px'},[]);
+      const header = el('div',{class:'row',style:'align-items:center'},[
+        el('div',{},{[0]:'x'}), // dummy to keep structure in code block
+      ]);
+      catDiv.appendChild(el('h3',{style:'margin:0 0 6px;font-size:16px'},[document.createTextNode(c.name), el('span',{class:'small',style:'margin-left:6px'},[document.createTextNode('– '+(c.locked?'Betting locked':'Accepting bets'))]) ]));
+      const table = el('table',{},[]);
+      table.innerHTML = '<thead><tr><th>Team</th><th class="right">Pool</th><th class="right">Odds</th></tr></thead><tbody></tbody>';
+      const tb = table.querySelector('tbody');
+      const total = totalForCat(c.id);
+      const teams = store.teams.length? store.teams: [];
+      teams.forEach(t=>{
+        const p = (store.pools[c.id]||{})[t.id]||0;
+        const odds = p>0? (total/p).toFixed(2)+'×' : (total>0? (total).toFixed(2)+'×':'—');
+        const tr = el('tr',{},[
+          el('td',{},[document.createTextNode(t.name)]),
+          el('td',{class:'right money'},[document.createTextNode(fmt(p))]),
+          el('td',{class:'right'},[document.createTextNode(odds)])
+        ]);
+        tb.appendChild(tr);
+      });
+      if(teams.length===0){
+        const tr = el('tr',{},[el('td',{colspan:'3',class:'small muted center'},[document.createTextNode('Add teams to show odds')])]);
+        table.querySelector('tbody').appendChild(tr);
+      }
+      catDiv.appendChild(table);
+      div.appendChild(catDiv);
+    });
+  }
+
+  function renderSlips(){
+    const list = $('#slips');
+    list.innerHTML = '';
+    if(store.bets.length===0){ list.innerHTML = '<p class="small muted">No bets yet.</p>'; return; }
+    store.bets.slice().reverse().forEach(b=>{
+      const cat = store.categories.find(c=> c.id===b.categoryId);
+      const team = store.teams.find(t=> t.id===b.teamId);
+      const status = b.status||'open';
+      const item = el('div',{class:'row',style:'justify-content:space-between;align-items:center;border-bottom:1px solid #26306a;padding:8px 0'},[
+        el('div',{},[
+          el('div',{},[el('b',{},[document.createTextNode(team? team.name:'[removed]')]), document.createTextNode(' in '), el('span',{class:'tag'},[document.createTextNode(cat? cat.name:'?')])]),
+          el('div',{class:'small muted'},[document.createTextNode(status==='open'? 'Open' : status==='won'? 'Won' : 'Lost')])
+        ]),
+        el('div',{},[
+          el('div',{class:'right money'},[document.createTextNode(fmt(b.amount))]),
+          el('div',{class:'small muted right'},[document.createTextNode(b.payout? 'payout: '+fmt(b.payout): '')])
+        ])
+      ]);
+      list.appendChild(item);
+    });
+  }
+
+  function renderLeaderboards(){
+    const div = $('#leaderboards');
+    const wins = {};
+    store.bets.forEach(b=>{ if(b.status==='won'){ wins['me']=(wins['me']||0)+1; } });
+    const totalWon = store.bets.filter(b=> b.status==='won').reduce((a,b)=> a+(b.payout||0),0);
+    div.innerHTML = `<div class="row">
+      <div class="pill">My wins: <b style="margin-left:6px">${wins['me']||0}</b></div>
+      <div class="pill">Total payout won: <b style="margin-left:6px" class="money">${fmt(totalWon)}</b></div>
+      <div class="pill">Open bets: <b style="margin-left:6px">${store.bets.filter(b=>b.status==='open').length}</b></div>
+    </div>`;
+  }
+
+  function totalForCat(catId){
+    const p = store.pools[catId]||{}; let sum=0; for(const v of Object.values(p)) sum+=v; return sum;
+  }
+
+  // ---------- Actions ----------
+  function addTeam(){
+    const name = $('#teamName').value.trim();
+    if(!name) return alert('Team name required');
+    const t = {id:uid(), name, builders:$('#teamBuilders').value.trim(), mass:Number($('#teamMass').value)||null, img:$('#teamImg').value.trim()||null};
+    store.teams.push(t); store.save(); renderSelects(); renderTeams(); renderPools();
+    $('#teamName').value=''; $('#teamBuilders').value=''; $('#teamMass').value=''; $('#teamImg').value='';
+  }
+  function removeTeam(id){
+    store.teams = store.teams.filter(t=> t.id!==id);
+    Object.keys(store.pools).forEach(cid=>{ delete store.pools[cid][id]; });
+    store.bets = store.bets.filter(b=> b.teamId!==id); // remove related bets
+    store.save(); renderSelects(); renderTeams(); renderPools(); renderSlips();
+  }
+  function addCategory(){
+    const name = $('#catName').value.trim(); if(!name) return alert('Category name required');
+    const c = {id:uid(), name, note:$('#catNote').value.trim(), locked:false, winner:null};
+    store.categories.push(c); store.pools[c.id]={}; store.save(); renderSelects(); renderCategories(); renderPools();
+    $('#catName').value=''; $('#catNote').value='';
+  }
+  function placeBet(catId, teamId, amount){
+    const cat = store.categories.find(c=> c.id===catId); if(!cat) return alert('Category missing');
+    if(cat.locked) return alert('Betting is locked for this category');
+    if(!store.teams.find(t=> t.id===teamId)) return alert('Team missing');
+    amount = Math.floor(Number(amount)); if(!amount || amount<1) return alert('Enter a valid amount');
+    if(amount>store.wallet) return alert('Not enough 🐎');
+    store.wallet -= amount;
+    const b = {id:uid(), categoryId:catId, teamId, amount, status:'open', payout:0};
+    store.bets.push(b);
+    store.pools[catId][teamId] = (store.pools[catId][teamId]||0) + amount;
+    store.save(); refreshWallet(); renderPools(); renderSlips(); renderLeaderboards();
+  }
+  function settle(catId, winningTeamId){
+    const total = totalForCat(catId);
+    const winPool = (store.pools[catId]||{})[winningTeamId]||0;
+    const factor = winPool>0? total / winPool : 0; // payout multiplier
+    store.bets.forEach(b=>{
+      if(b.categoryId!==catId || b.status!=='open') return;
+      if(b.teamId===winningTeamId){ b.status='won'; b.payout = Math.floor(b.amount * factor); store.wallet += b.payout; }
+      else { b.status='lost'; b.payout = 0; }
+    });
+    const cat = store.categories.find(c=> c.id===catId); if(cat){ cat.winner = winningTeamId; cat.locked=true; }
+    store.save(); refreshWallet(); renderPools(); renderSlips(); renderCategories(); renderLeaderboards();
+  }
+
+  // ---------- Events ----------
+  $('#addTeamBtn').onclick = addTeam;
+  $('#addCatBtn').onclick = addCategory;
+  $('#placeBetBtn').onclick = ()=> placeBet($('#betCategory').value, $('#betTeam').value, $('#betAmount').value);
+  $('#multiBetBtn').onclick = ()=>{
+    const teamId = $('#betTeam').value; if(!teamId) return alert('Pick a team');
+    store.categories.forEach(c=>{ if(!c.locked) placeBet(c.id, teamId, 5); });
+  };
+  $('#addHorses').onclick = ()=>{
+    const n = Number(prompt('Add how many 🐎 to your wallet?', '25')); if(!n || n<1) return; store.wallet+=Math.floor(n); store.save(); refreshWallet();
+  };
+  $('#resetBtn').onclick = ()=>{ if(confirm('Reset all data?')) store.reset(); };
+  $('#exportBtn').onclick = ()=>{
+    const data = localStorage.getItem('tbb_state')||'';
+    const blob = new Blob([data], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = el('a',{href:url,download:'tower-build-bets.json'}); document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  };
+  $('#importBtn').onclick = ()=>{
+    const inp = el('input',{type:'file',accept:'application/json'});
+    inp.onchange = ()=>{
+      const f = inp.files[0]; if(!f) return; const r = new FileReader(); r.onload = ()=>{ localStorage.setItem('tbb_state', r.result); location.reload(); }; r.readAsText(f);
+    }; inp.click();
+  };
+
+  $('#unlockBtn').onclick = ()=>{
+    if($('#pin').value === store.pin){ $('#adminPanel').classList.remove('hidden'); } else alert('Wrong PIN');
+  };
+  $('#toggleLockBtn').onclick = ()=>{
+    const id = $('#lockCategory').value; const c = store.categories.find(x=> x.id===id); c.locked = !c.locked; store.save(); renderCategories(); renderPools(); renderSelects();
+  };
+  $('#settleBtn').onclick = ()=>{
+    const cid = $('#winCategory').value; const tid = $('#winTeam').value; if(!cid||!tid) return alert('Pick category and winner');
+    settle(cid, tid);
+  };
+  $('#grantBtn').onclick = ()=>{ const n = Math.floor(Number($('#grantAmt').value)||0); if(n>0){ store.wallet+=n; store.save(); refreshWallet(); $('#grantAmt').value=''; } };
+
+  // ---------- Init ----------
+  function init(){ refreshWallet(); renderSelects(); renderTeams(); renderCategories(); renderPools(); renderSlips(); renderLeaderboards(); }
+  init();
+  </script>
+</body>
+</html>
